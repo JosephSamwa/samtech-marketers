@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SamTech Solutions - View Messages</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #2563eb;
+            text-align: center;
+        }
+        #messageList {
+            list-style-type: none;
+            padding: 0;
+        }
+        .message {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .message h3 {
+            margin-top: 0;
+            color: #2563eb;
+        }
+        .message p {
+            margin: 5px 0;
+        }
+        .message .date {
+            font-size: 0.8em;
+            color: #666;
+            text-align: right;
+        }
+        #loadingMessage {
+            text-align: center;
+            color: #666;
+        }
+        .contact-buttons {
+            margin-top: 10px;
+        }
+        .contact-button {
+            display: inline-block;
+            padding: 5px 10px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 3px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+        }
+        .whatsapp {
+            background-color: #25D366;
+        }
+        .call {
+            background-color: #007bff;
+        }
+        .email {
+            background-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>SamTech Solutions - Messages</h1>
+    <div id="loadingMessage">Loading messages...</div>
+
+    <h2>MESSAGES</h2>
+    <ul id="messageList"></ul>
+
+    <h2>MARKETERS</h2>
+    <ul id="RegistrationList"></ul>
+
+    <script>
+// Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyAujFKDx_T7ZSEyYGmvbdhkmn8SdKCNXjs",
+    authDomain: "hope-kokeno-cbo.firebaseapp.com",
+    databaseURL: "https://hope-kokeno-cbo-default-rtdb.firebaseio.com",
+    projectId: "hope-kokeno-cbo",
+    storageBucket: "hope-kokeno-cbo.appspot.com",
+    messagingSenderId: "508964589142",
+    appId: "1:508964589142:web:33a4d190a497bb5ecab5f7"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+// Message listeners
+let messagesListener = null;
+let registrationsListener = null;
+
+// Function to retrieve and display messages
+function getMessages() {
+    const messagesRef = database.ref('SamTech-messages');
+    const messageList = document.getElementById('messageList');
+    const loadingMessage = document.getElementById('loadingMessage');
+
+    // Remove existing listener if it exists
+    if (messagesListener) {
+        messagesRef.off('value', messagesListener);
+    }
+
+    // Create new listener
+    messagesListener = messagesRef.on('value', (snapshot) => {
+        // Clear previous messages
+        messageList.innerHTML = '';
+
+        // Hide loading message
+        if (loadingMessage) {
+            loadingMessage.style.display = 'none';
+        }
+
+        // Check if there are messages
+        const data = snapshot.val();
+        if (data) {
+            // Convert object to array and reverse to show newest first
+            const messages = Object.entries(data).reverse();
+
+            const messageElements = messages.map(([key, value]) => {
+                const li = document.createElement('li');
+                li.className = 'message';
+                li.innerHTML = `
+                    <h3>${escapeHtml(value.name)}</h3>
+                    <p><strong>Email:</strong> ${escapeHtml(value.email)}</p>
+                    <p><strong>Phone:</strong> ${escapeHtml(value.phone)}</p>
+                    <p><strong>Message:</strong> ${escapeHtml(value.message)}</p>
+                    <p class="date">${escapeHtml(value.date)}</p>
+                    <div class="contact-buttons">
+                        <a href="https://wa.me/${encodeURIComponent(value.phone)}" target="_blank" class="contact-button whatsapp">
+                            <i class="fab fa-whatsapp"></i> WhatsApp
+                        </a>
+                        <a href="tel:${encodeURIComponent(value.phone)}" class="contact-button call">
+                            <i class="fas fa-phone"></i> Call
+                        </a>
+                        <a href="mailto:${encodeURIComponent(value.email)}" class="contact-button email">
+                            <i class="fas fa-envelope"></i> Email
+                        </a>
+                    </div>
+                `;
+                return li;
+            });
+
+            messageElements.forEach(element => messageList.appendChild(element));
+        } else {
+            messageList.innerHTML = '<li>No messages found.</li>';
+        }
+    }, (error) => {
+        console.error("Error fetching messages: ", error);
+        if (loadingMessage) {
+            loadingMessage.textContent = 'Error loading messages. Please try again later.';
+        }
+    });
+}
+
+// Function to retrieve and display registrations
+function getRegistrations() {
+    const registrationsRef = database.ref('SamTech-registrations');
+    const registrationList = document.getElementById('RegistrationList');
+    const loadingMessage = document.getElementById('loadingMessage');
+
+    // Remove existing listener if it exists
+    if (registrationsListener) {
+        registrationsRef.off('value', registrationsListener);
+    }
+
+    // Create new listener
+    registrationsListener = registrationsRef.on('value', (snapshot) => {
+        // Clear previous registrations
+        registrationList.innerHTML = '';
+
+        // Check if there are registrations
+        const data = snapshot.val();
+        if (data) {
+            // Convert object to array and reverse to show newest first
+            const registrations = Object.entries(data).reverse();
+
+            const registrationElements = registrations.map(([key, value]) => {
+                const li = document.createElement('li');
+                li.className = 'message';
+                li.innerHTML = `
+                    <h3>${escapeHtml(value.name)}</h3>
+                    <p><strong>Email:</strong> ${escapeHtml(value.email)}</p>
+                    <p><strong>Phone:</strong> ${escapeHtml(value.phone)}</p>
+                    <p><strong>Location:</strong> ${escapeHtml(value.location)}</p>
+                    <p class="date">${escapeHtml(value.date)}</p>
+                    <div class="contact-buttons">
+                        <a href="https://wa.me/${encodeURIComponent(value.phone)}" target="_blank" class="contact-button whatsapp">
+                            <i class="fab fa-whatsapp"></i> WhatsApp
+                        </a>
+                        <a href="tel:${encodeURIComponent(value.phone)}" class="contact-button call">
+                            <i class="fas fa-phone"></i> Call
+                        </a>
+                        <a href="mailto:${encodeURIComponent(value.email)}" class="contact-button email">
+                            <i class="fas fa-envelope"></i> Email
+                        </a>
+                    </div>
+                `;
+                return li;
+            });
+
+            registrationElements.forEach(element => registrationList.appendChild(element));
+        } else {
+            registrationList.innerHTML = '<li>No Registrations found.</li>';
+        }
+    }, (error) => {
+        console.error("Error fetching registrations: ", error);
+        if (loadingMessage) {
+            loadingMessage.textContent = 'Error loading registrations. Please try again later.';
+        }
+    });
+}
+
+// Helper function to escape HTML and prevent XSS
+function escapeHtml(unsafe) {
+    return unsafe
+        ? unsafe
+            .toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;")
+        : '';
+}
+
+// Clean up listeners before unloading the page
+window.addEventListener('beforeunload', () => {
+    if (messagesListener) {
+        database.ref('SamTech-messages').off('value', messagesListener);
+    }
+    if (registrationsListener) {
+        database.ref('SamTech-registrations').off('value', registrationsListener);
+    }
+});
+
+// Initialize both functions when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    getMessages();
+    getRegistrations();
+});
+
+    </script>
+</body>
+</html>
